@@ -5,6 +5,9 @@
 MIN_GZ_VERSION="8.0.0"
 GZ_SIM_VERSION=$(gz sim --versions 2>/dev/null | head -n 1 | tr -d ' ')
 
+PX4_GZ_SPAWN_TIMEOUT="${PX4_GZ_SPAWN_TIMEOUT:-1}"
+PX4_GZ_TIMEOUT="${PX4_GZ_TIMEOUT:-5000}"
+
 if [ -z "$GZ_SIM_VERSION" ]; then
 	echo "ERROR [init] Gazebo gz sim not found. Please install gz-harmonic"
 	exit 1
@@ -138,11 +141,13 @@ if [ -n "${PX4_SIM_MODEL#*gz_}" ] && [ -z "${PX4_GZ_MODEL_NAME}" ]; then
 
 	# Spawn model
 	${gz_command} service -s "/world/${PX4_GZ_WORLD}/create" --reqtype gz.msgs.EntityFactory \
-			--reptype gz.msgs.Boolean --timeout 5000 \
+			--reptype gz.msgs.Boolean --timeout ${PX4_GZ_TIMEOUT} \
 			--req "name: \"${MODEL_NAME_INSTANCE}\", allow_renaming: false, sdf: '${sdf_str}'" > /dev/null 2>&1
 
 	# Wait for model to spawn
-	sleep 1
+	sleep ${PX4_GZ_SPAWN_TIMEOUT}
+
+	echo "INFO  [init] Starting gazebo bridge."
 
 	# Start gz_bridge
 	if ! gz_bridge start -w "${PX4_GZ_WORLD}" -n "${MODEL_NAME_INSTANCE}"; then
@@ -154,7 +159,7 @@ if [ -n "${PX4_SIM_MODEL#*gz_}" ] && [ -z "${PX4_GZ_MODEL_NAME}" ]; then
 	if [ -n "${PX4_SIM_SPEED_FACTOR}" ]; then
 		echo "INFO  [init] Setting simulation speed factor: ${PX4_SIM_SPEED_FACTOR}"
 		${gz_command} service -s "/world/${PX4_GZ_WORLD}/set_physics" --reqtype gz.msgs.Physics \
-					--reptype gz.msgs.Boolean --timeout 5000 \
+					--reptype gz.msgs.Boolean --timeout ${PX4_GZ_TIMEOUT} \
 					--req "real_time_factor: ${PX4_SIM_SPEED_FACTOR}" > /dev/null 2>&1
 	fi
 
